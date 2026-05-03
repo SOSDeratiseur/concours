@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<!--
+╔═══════════════════════════════════════════════════════════╗
+║          Gestionnaire de Concours Facebook                ║
+║          Version 2.0 — Open Source                       ║
+╠═══════════════════════════════════════════════════════════╣
+║                                                           ║
+║  DÉMARRAGE RAPIDE :                                       ║
+║  Ouvrez ce fichier dans un navigateur.                    ║
+║  Renseignez le nom de votre page au premier lancement.    ║
+║  Toutes les données sont sauvegardées localement.         ║
+║                                                           ║
+║  HÉBERGER SUR GITHUB PAGES :                             ║
+║  1. Créez un repo GitHub                                  ║
+║  2. Uploadez ce fichier en tant qu'index.html             ║
+║  3. Settings → Pages → Source: main / root               ║
+║                                                           ║
+║  MODE API FACEBOOK :                                      ║
+║  - Créez une app sur developers.facebook.com              ║
+║  - Générez un token : pages_read_user_content             ║
+║                       pages_read_engagement               ║
+║  - Collez-le dans l'interface au démarrage                ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+-->
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestionnaire de Concours Facebook</title>
+<style>
+/* ===== VARIABLES ===== */
+:root{
+  --blue:#1877F2;--blue-d:#166FE5;--blue-l:#E7F3FF;
+  --green:#42B72A;--red:#FA3E3E;--gold:#FFD700;--orange:#FFA500;
+  --bg:#F0F2F5;--white:#fff;--text:#1C1E21;
+  --gray:#65676B;--border:#CED0D4;--border-l:#E4E6EB;
+  --sh:0 2px 4px rgba(0,0,0,.08),0 8px 16px rgba(0,0,0,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ===== MODAL SETUP ===== */
+#setup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)}
+#setup-box{background:var(--white);border-radius:16px;padding:32px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:popIn .3s ease}
+.setup-logo{font-size:48px;text-align:center;margin-bottom:16px}
+.setup-title{font-size:22px;font-weight:800;text-align:center;margin-bottom:6px}
+.setup-sub{font-size:14px;color:var(--gray);text-align:center;margin-bottom:24px;line-height:1.5}
+.setup-sep{height:1px;background:var(--border-l);margin:20px 0}
+.setup-note{font-size:12px;color:var(--gray);margin-top:16px;text-align:center;line-height:1.5}
+@keyframes popIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+
+/* ===== HEADER ===== */
+header{background:var(--white);border-bottom:1px solid var(--border);padding:0 16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 6px rgba(0,0,0,.07)}
+.h-inner{max-width:960px;margin:0 auto;height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.h-logo{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.h-icon{width:38px;height:38px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;flex-shrink:0}
+.h-title{font-weight:700;font-size:16px;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.h-sub{font-size:11px;color:var(--gray)}
+.h-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.h-count{font-size:12px;color:var(--gray);background:var(--bg);padding:3px 10px;border-radius:20px;font-weight:600;white-space:nowrap}
+.h-save{font-size:12px;color:var(--green);font-weight:600;opacity:0;transition:opacity .4s;white-space:nowrap}
+.h-save.show{opacity:1}
+.icon-btn{background:none;border:none;cursor:pointer;font-size:18px;padding:6px;border-radius:6px;transition:background .2s;color:var(--gray)}
+.icon-btn:hover{background:var(--bg)}
+
+/* ===== CONTAINER ===== */
+.container{max-width:960px;margin:20px auto;padding:0 16px}
+
+/* ===== RESUME BANNER ===== */
+#resume-banner{background:linear-gradient(135deg,#E7F3FF,#F0F7FF);border:2px solid var(--blue);border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;animation:slideIn .3s ease}
+#resume-banner b{color:var(--blue)}
+
+/* ===== STEPS ===== */
+.steps{display:flex;align-items:center;background:var(--white);border-radius:12px;padding:14px 20px;box-shadow:var(--sh);margin-bottom:18px;overflow-x:auto;gap:4px}
+.step{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.snum{width:30px;height:30px;border-radius:50%;background:var(--border);color:var(--gray);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;transition:all .3s}
+.step.active .snum{background:var(--blue);color:#fff}
+.step.done .snum{background:var(--green);color:#fff}
+.slbl{font-size:13px;color:var(--gray);font-weight:500}
+.step.active .slbl{color:var(--blue);font-weight:700}
+.sdiv{flex:1;min-width:18px;height:2px;background:var(--border);transition:background .3s}
+.sdiv.done{background:var(--green)}
+
+/* ===== CARD ===== */
+.card{background:var(--white);border-radius:12px;padding:24px;box-shadow:var(--sh);margin-bottom:14px}
+.c-title{font-size:20px;font-weight:800;margin-bottom:4px}
+.c-sub{color:var(--gray);font-size:14px;margin-bottom:18px;line-height:1.4}
+
+/* ===== BUTTONS ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 20px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;text-decoration:none}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-d);transform:translateY(-1px)}
+.btn-success{background:var(--green);color:#fff}.btn-success:hover{background:#38a124;transform:translateY(-1px)}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{opacity:.9}
+.btn-ghost{background:var(--bg);color:var(--text)}.btn-ghost:hover{background:var(--border)}
+.btn-gold{background:linear-gradient(135deg,#FFD700,#FFA500);color:#1a1a1a;font-weight:800}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(255,165,0,.4)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+.btn-sm{padding:6px 12px;font-size:13px}
+.btn-xs{padding:4px 10px;font-size:12px}
+.btn-w{width:100%;display:flex}
+
+/* ===== FORMS ===== */
+.fg{margin-bottom:14px}
+.fl{display:block;font-weight:600;font-size:14px;margin-bottom:5px}
+.fi{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:15px;transition:border-color .2s;outline:none;font-family:inherit;background:var(--white)}
+.fi:focus{border-color:var(--blue)}.fi.err{border-color:var(--red)}
+.fi-hint{font-size:12px;color:var(--gray);margin-top:4px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ===== ALERTS ===== */
+.alert{padding:12px 16px;border-radius:8px;margin-bottom:14px;font-size:14px;display:flex;align-items:flex-start;gap:10px;line-height:1.5}
+.ai{font-size:17px;flex-shrink:0;margin-top:1px}
+.a-info{background:var(--blue-l);color:#0a4f9e;border-left:4px solid var(--blue)}
+.a-warn{background:#FFF8E1;color:#5D3A00;border-left:4px solid var(--orange)}
+.a-ok{background:#E8F5E9;color:#1B5E20;border-left:4px solid var(--green)}
+
+/* ===== MODE CARDS ===== */
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0 18px}
+.mc{border:2px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:all .2s;text-align:center}
+.mc:hover,.mc.sel{border-color:var(--blue);background:var(--blue-l)}
+.mc-icon{font-size:34px;margin-bottom:8px}
+.mc-title{font-weight:700;font-size:15px;margin-bottom:5px}
+.mc-desc{font-size:12px;color:var(--gray);line-height:1.4}
+
+/* ===== CRITERIA BUTTONS (add form) ===== */
+.crit-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.cb{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:2px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;background:var(--white);color:var(--gray);user-select:none;line-height:1}
+.cb.on{border-color:var(--green);background:#E8F5E9;color:#2E7D32}
+
+/* ===== PARTICIPANT CARD ===== */
+.pi{display:flex;align-items:center;gap:12px;padding:13px;border:2px solid var(--border);border-radius:10px;margin-bottom:9px;transition:all .2s;animation:slideIn .2s ease}
+.pi.elig{border-color:#AED581;background:#F9FBE7}
+.pav{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--blue),#7C3AED);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700;flex-shrink:0}
+.pin{flex:1;min-width:0}
+.pname{font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pchips{display:flex;gap:5px;margin-top:4px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.con{background:#E8F5E9;color:#2E7D32}.coff{background:#FFEBEE;color:#C62828}
+
+/* ===== TOGGLE BTNS (validation) ===== */
+.tog{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid transparent;transition:all .2s;background:none;font-family:inherit}
+.tog.on{background:#E8F5E9;color:#2E7D32;border-color:#4CAF50}
+.tog.off{background:#FFEBEE;color:#C62828;border-color:#EF9A9A}
+
+/* ===== STATS ===== */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.stat{background:var(--bg);border-radius:10px;padding:14px;text-align:center}
+.sn{font-size:28px;font-weight:900;color:var(--blue)}
+.sl{font-size:11px;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+
+/* ===== RAFFLE ===== */
+.rf-center{text-align:center;padding:28px 16px}
+.drum{width:280px;height:80px;margin:22px auto;overflow:hidden;border-radius:12px;border:3px solid var(--blue);background:var(--blue-l);position:relative}
+.drum::before,.drum::after{content:'';position:absolute;left:0;right:0;height:22px;z-index:2;pointer-events:none}
+.drum::before{top:0;background:linear-gradient(to bottom,var(--blue-l),transparent)}
+.drum::after{bottom:0;background:linear-gradient(to top,var(--blue-l),transparent)}
+.drum-inner{display:flex;flex-direction:column;align-items:center}
+.drum-name{height:80px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:var(--blue);padding:0 16px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ===== WINNER ===== */
+.win-box{background:linear-gradient(135deg,#FFD700,#FFA500);border-radius:16px;padding:36px;text-align:center;margin:18px 0;box-shadow:0 8px 32px rgba(255,165,0,.35)}
+.win-trophy{font-size:60px;margin-bottom:10px}
+.win-label{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:rgba(0,0,0,.55);margin-bottom:6px}
+.win-name{font-size:28px;font-weight:900;color:#1a1a1a;word-break:break-word}
+
+/* ===== PREV WINNERS ===== */
+.pw-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.pw-chip{background:var(--bg);border:2px solid var(--border);border-radius:20px;padding:3px 11px;font-size:13px}
+
+/* ===== ADD BOX ===== */
+.add-box{background:var(--bg);border-radius:10px;padding:16px;margin-bottom:16px;border:1px solid var(--border-l)}
+.add-box-title{font-weight:700;font-size:14px;margin-bottom:12px;color:var(--gray);text-transform:uppercase;letter-spacing:.5px}
+
+/* ===== ACTIONS BAR ===== */
+.abar{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:10px}
+
+/* ===== MISC ===== */
+.screen{display:none}.screen.active{display:block}
+.empty{text-align:center;padding:36px;color:var(--gray)}
+.empty-icon{font-size:44px;margin-bottom:10px}
+.empty-text{font-size:16px;font-weight:700;margin-bottom:5px}
+.sep{height:1px;background:var(--border-l);margin:18px 0}
+.spin{display:inline-block;width:16px;height:16px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle}
+.spin-b{border-top-color:var(--blue);border-color:var(--border) var(--border) var(--border) var(--blue)}
+.pulsing{animation:pulse 1s infinite}
+details{border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:12px}
+details summary{cursor:pointer;font-weight:700;color:var(--blue);font-size:13px}
+details ol{margin-top:10px;padding-left:18px}
+details li{font-size:13px;margin-bottom:6px;line-height:1.5}
+code{background:var(--border-l);padding:2px 6px;border-radius:4px;font-size:12px;font-family:monospace}
+.tag-badge{font-size:11px;background:var(--blue-l);color:var(--blue);padding:2px 8px;border-radius:20px;font-weight:700}
+.new-badge{font-size:10px;background:#FFE0B2;color:#E65100;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px;vertical-align:middle}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
+.cf{position:absolute;top:-20px;animation:cfFall linear forwards}
+@keyframes cfFall{to{transform:translateY(110vh) rotate(720deg)}}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes rot{to{transform:rotate(360deg)}}
+@keyframes popIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+@media(max-width:600px){
+  .mode-grid{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .abar{flex-direction:column-reverse}
+  .abar .btn{width:100%}
+  .row2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== SETUP MODAL ===== -->
+<div id="setup-overlay" style="display:none">
+  <div id="setup-box">
+    <div class="setup-logo">🎁</div>
+    <div class="setup-title">Gestionnaire de Concours</div>
+    <div class="setup-sub">Configurez votre concours en quelques secondes.<br>Ces informations seront sauvegardées dans votre navigateur.</div>
+
+    <div class="fg">
+      <label class="fl">Nom de la page / Organisateur <span style="color:var(--red)">*</span></label>
+      <input type="text" class="fi" id="s-organizer" placeholder="Ex: Optique Mauen, Boulangerie Dupont..." maxlength="60">
+      <div class="fi-hint">Affiché dans l'en-tête et les critères de participation</div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">Titre du concours <span style="color:var(--gray);font-weight:400">(optionnel)</span></label>
+      <input type="text" class="fi" id="s-title" placeholder="Ex: Grand Jeu de Printemps 2026" maxlength="80">
+    </div>
+
+    <div class="setup-sep"></div>
+
+    <button class="btn btn-primary btn-w" onclick="saveConfig()" style="font-size:16px;padding:12px">
+      🚀 Démarrer le concours
+    </button>
+
+    <div class="setup-note">
+      Vos données restent entièrement sur votre appareil.<br>
+      Aucun serveur, aucun compte requis.
+    </div>
+  </div>
+</div>
+
+<!-- ===== HEADER ===== -->
+<header>
+  <div class="h-inner">
+    <div class="h-logo">
+      <div class="h-icon">🏆</div>
+      <div style="min-width:0">
+        <div class="h-title" id="h-title">Gestionnaire de Concours</div>
+        <div class="h-sub" id="h-sub">Facebook Contest Manager</div>
+      </div>
+    </div>
+    <div class="h-right">
+      <span class="h-save" id="save-badge">✓ Sauvegardé</span>
+      <span class="h-count" id="h-count" style="display:none"></span>
+      <button class="icon-btn" onclick="openSettings()" title="Paramètres">⚙️</button>
+      <button class="icon-btn" onclick="newContest()" title="Nouveau concours">➕</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- RESUME BANNER -->
+  <div id="resume-banner" style="display:none">
+    <div>
+      📂 <b id="rb-text">Concours en cours</b> — données sauvegardées
+      <div style="font-size:12px;color:var(--gray);margin-top:3px" id="rb-date"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn btn-primary btn-sm" onclick="resumeContest()">Reprendre →</button>
+      <button class="btn btn-ghost btn-sm" onclick="dismissBanner()">Ignorer</button>
+    </div>
+  </div>
+
+  <!-- STEPS -->
+  <div class="steps">
+    <div class="step active" id="st1"><div class="snum" id="sn1">1</div><div class="slbl">Mode</div></div>
+    <div class="sdiv" id="sd12"></div>
+    <div class="step" id="st2"><div class="snum" id="sn2">2</div><div class="slbl">Participants</div></div>
+    <div class="sdiv" id="sd23"></div>
+    <div class="step" id="st3"><div class="snum" id="sn3">3</div><div class="slbl">Validation</div></div>
+    <div class="sdiv" id="sd34"></div>
+    <div class="step" id="st4"><div class="snum" id="sn4">4</div><div class="slbl">Tirage</div></div>
+  </div>
+
+  <!-- ============================== -->
+  <!-- SCREEN 1 — MODE               -->
+  <!-- ============================== -->
+  <div class="screen active" id="sc1">
+    <div class="card">
+      <div class="c-title">Comment gérer ce concours ? 👋</div>
+      <div class="c-sub">Choisissez la méthode qui vous convient</div>
+
+      <div class="mode-grid">
+        <div class="mc sel" id="mc-manual" onclick="selectMode('manual')">
+          <div class="mc-icon">✏️</div>
+          <div class="mc-title">Mode Manuel</div>
+          <div class="mc-desc">Saisissez les participants vous-même et cochez les critères. Aucune configuration technique requise.</div>
+        </div>
+        <div class="mc" id="mc-api" onclick="selectMode('api')">
+          <div class="mc-icon">🤖</div>
+          <div class="mc-title">Mode Automatique <span class="new-badge">API</span></div>
+          <div class="mc-desc">Connectez l'API Facebook pour importer automatiquement les commentaires et détecter les tags.</div>
+        </div>
+      </div>
+
+      <!-- API Panel -->
+      <div id="api-panel" style="display:none">
+        <div class="alert a-warn">
+          <span class="ai">⚠️</span>
+          <div><strong>Limitations API Facebook :</strong> Les tags (3 personnes) sont vérifiés automatiquement. Les <em>likes de page</em> et <em>partages publics</em> restent à cocher manuellement (restriction Facebook depuis 2018).</div>
+        </div>
+        <details>
+          <summary>📖 Comment obtenir un Token d'accès Facebook ?</summary>
+          <ol>
+            <li>Allez sur <strong>developers.facebook.com</strong> et créez une App (type : Business).</li>
+            <li>Dans votre App → <strong>Outils → Explorateur d'API Graph</strong>.</li>
+            <li>Sélectionnez votre <strong>Page</strong> dans le menu déroulant.</li>
+            <li>Cochez les permissions : <code>pages_read_engagement</code> et <code>pages_read_user_content</code></li>
+            <li>Cliquez sur <strong>Générer un token d'accès</strong> et copiez-le ci-dessous.</li>
+          </ol>
+        </details>
+        <div class="fg">
+          <label class="fl">Token d'accès Facebook</label>
+          <input type="password" class="fi" id="fb-token" placeholder="EAABwzLixnjYBO...">
+        </div>
+        <div class="fg">
+          <label class="fl">URL du post Facebook</label>
+          <input type="url" class="fi" id="fb-url" placeholder="https://www.facebook.com/VotrePage/posts/...">
+          <div class="fi-hint">Formats acceptés : /posts/ID · permalink.php?story_fbid=… · /photo?fbid=…</div>
+        </div>
+      </div>
+
+      <!-- Criteria reminder -->
+      <div class="alert a-info" id="criteria-alert">
+        <span class="ai">📋</span>
+        <div id="criteria-text">
+          <strong>Critères de participation :</strong><br>
+          👍 Aimer la page<br>
+          👥 Taguer <strong>3 personnes</strong> en commentaire<br>
+          🔄 Partager le post <strong>en public</strong>
+        </div>
+      </div>
+
+      <div class="abar">
+        <div></div>
+        <button class="btn btn-primary" id="btn-s1" onclick="step1Next()">Continuer →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== -->
+  <!-- SCREEN 2 — PARTICIPANTS        -->
+  <!-- ============================== -->
+  <div class="screen" id="sc2">
+    <div class="card">
+      <div class="c-title">Ajouter des Participants</div>
+      <div class="c-sub" id="sc2-sub">Saisissez les noms et cochez les critères remplis pour chaque personne.</div>
+
+      <div class="add-box">
+        <div class="add-box-title">➕ Nouveau participant</div>
+        <div class="fg">
+          <label class="fl">Nom du participant <span style="color:var(--red)">*</span></label>
+          <input type="text" class="fi" id="np-name" placeholder="Prénom Nom"
+                 onkeypress="if(event.key==='Enter')addParticipant()"
+                 oninput="this.classList.remove('err')">
+        </div>
+        <div class="fg">
+          <label class="fl">Critères déjà vérifiés</label>
+          <div class="crit-row">
+            <div class="cb" id="cb-like"  onclick="toggleNew('like')">👍 A aimé la page</div>
+            <div class="cb" id="cb-tag"   onclick="toggleNew('tag')">👥 A tagué 3 personnes</div>
+            <div class="cb" id="cb-share" onclick="toggleNew('share')">🔄 A partagé publiquement</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-w" onclick="addParticipant()">+ Ajouter</button>
+      </div>
+
+      <!-- List toolbar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700;font-size:15px">
+          Participants <span id="list-count" style="color:var(--gray);font-weight:400;font-size:14px"></span>
+        </div>
+        <div style="display:flex;gap:7px">
+          <button class="btn btn-ghost btn-xs" onclick="markAllCriteria()" title="Cocher tous les critères pour tous">✅ Tout valider</button>
+          <button class="btn btn-ghost btn-xs" onclick="document.getElementById('csv-in').click()">📥 CSV</button>
+          <button class="btn btn-ghost btn-xs" onclick="exportCSV()">📤 Export</button>
+        </div>
+      </div>
+      <input type="file" id="csv-in" accept=".csv,.txt" style="display:none" onchange="importCSV(event)">
+
+      <div id="p-list"></div>
+      <div id="p-empty" class="empty">
+        <div class="empty-icon">👥</div>
+        <div class="empty-text">Aucun participant</div>
+        <div>Ajoutez des participants via le formulaire ci-dessus<br>ou importez un fichier CSV</div>
+      </div>
+
+      <div class="sep"></div>
+      <div style="font-size:12px;color:var(--gray);text-align:center;margin-bottom:16px">
+        💾 Les participants sont sauvegardés automatiquement dans votre navigateur
+      </div>
+
+      <div class="abar">
+        <button class="btn btn-ghost" onclick="goStep(1)">← Retour</button>
+        <button class="btn btn-primary" id="btn-s2" onclick="step2Next()" disabled>Valider les participants →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== -->
+  <!-- SCREEN 3 — VALIDATION          -->
+  <!-- ============================== -->
+  <div class="screen" id="sc3">
+    <div class="card">
+      <div class="c-title">Vérification des Critères</div>
+      <div class="c-sub">Cliquez sur les boutons pour activer / désactiver chaque critère par participant.</div>
+
+      <div class="stats" id="stats3"></div>
+
+      <div id="val-list"></div>
+
+      <div class="sep"></div>
+      <div class="abar">
+        <button class="btn btn-ghost" onclick="goStep(2)">← Retour</button>
+        <button class="btn btn-success" id="btn-s3" onclick="step3Next()">🎲 Procéder au Tirage →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== -->
+  <!-- SCREEN 4 — RAFFLE              -->
+  <!-- ============================== -->
+  <div class="screen" id="sc4">
+    <div class="card">
+      <div class="c-title">Tirage au Sort 🎲</div>
+      <div class="stats" id="stats4"></div>
+
+      <!-- Pre-draw -->
+      <div id="pre-draw" class="rf-center">
+        <div style="font-size:60px;margin-bottom:14px">🎯</div>
+        <p style="font-size:16px;margin-bottom:6px">
+          <strong id="elig-count">0</strong> participant(s) éligible(s) au tirage
+        </p>
+        <p style="color:var(--gray);font-size:13px;margin-bottom:24px">
+          Seuls les participants ayant rempli les 3 critères participent
+        </p>
+        <button class="btn btn-gold" style="font-size:18px;padding:14px 40px" onclick="startRaffle()">
+          🎲 Lancer le Tirage !
+        </button>
+      </div>
+
+      <!-- Drawing -->
+      <div id="drawing" style="display:none" class="rf-center">
+        <div class="drum"><div class="drum-inner" id="drum"></div></div>
+        <p class="pulsing" style="color:var(--gray);margin-top:14px;font-size:14px">
+          <span class="spin spin-b"></span>&nbsp;Tirage en cours...
+        </p>
+      </div>
+
+      <!-- Result -->
+      <div id="result" style="display:none">
+        <div class="win-box">
+          <div class="win-trophy">🏆</div>
+          <div class="win-label">🎉 Et le gagnant est...</div>
+          <div class="win-name" id="winner-name">—</div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+          <button class="btn btn-primary" onclick="drawAgain()">🔄 Nouveau Tirage</button>
+          <button class="btn btn-ghost" onclick="fullReset()">🔁 Réinitialiser les gagnants</button>
+        </div>
+        <div id="prev-section" style="display:none;margin-top:20px">
+          <div style="font-weight:700;font-size:13px;color:var(--gray);margin-bottom:7px">Gagnants précédents :</div>
+          <div class="pw-chips" id="prev-list"></div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:6px">
+      <button class="btn btn-ghost btn-sm" onclick="goStep(3)">← Retour à la validation</button>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<div id="confetti"></div>
+
+<script>
+/* ============================================================
+   ÉTAT GLOBAL
+   ============================================================ */
+const STORAGE_KEY = 'fb-contest-v2';
+
+let S = {
+  mode:    'manual',
+  config:  { organizer: '', title: '' },
+  parts:   [],   // {id, name, like, tag, share, addedAt}
+  winners: [],   // {id, name, drawnAt}
+  excluded: new Set(),
+  newCrit: { like: false, tag: false, share: false }
+};
+
+let saveTimer = null;
+
+/* ============================================================
+   PERSISTANCE
+   ============================================================ */
+function saveAll() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      config:   S.config,
+      parts:    S.parts,
+      winners:  S.winners,
+      excluded: [...S.excluded],
+      savedAt:  Date.now()
+    }));
+    flashSave();
+  } catch(e) { console.warn('Save failed', e); }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveAll, 600);
+}
+
+function flashSave() {
+  const el = document.getElementById('save-badge');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function loadAll() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (d.config)   S.config   = d.config;
+    if (d.parts)    S.parts    = d.parts;
+    if (d.winners)  S.winners  = d.winners;
+    if (d.excluded) S.excluded = new Set(d.excluded);
+    return d;
+  } catch(e) { return null; }
+}
+
+/* ============================================================
+   SETUP / CONFIG
+   ============================================================ */
+function openSetup(force = false) {
+  document.getElementById('setup-overlay').style.display = 'flex';
+  if (S.config.organizer) {
+    document.getElementById('s-organizer').value = S.config.organizer;
+    document.getElementById('s-title').value = S.config.title || '';
+  }
+}
+
+function openSettings() { openSetup(true); }
+
+function saveConfig() {
+  const org = document.getElementById('s-organizer').value.trim();
+  if (!org) {
+    document.getElementById('s-organizer').classList.add('err');
+    document.getElementById('s-organizer').focus();
+    return;
+  }
+  S.config.organizer = org;
+  S.config.title = document.getElementById('s-title').value.trim();
+  document.getElementById('setup-overlay').style.display = 'none';
+  applyConfig();
+  saveAll();
+}
+
+function applyConfig() {
+  const org   = S.config.organizer || 'Concours';
+  const title = S.config.title || 'Gestionnaire de Concours Facebook';
+  document.getElementById('h-title').textContent = org;
+  document.getElementById('h-sub').textContent   = title;
+  document.title = `${org} — Concours`;
+
+  // Update criteria alert
+  document.getElementById('criteria-text').innerHTML =
+    `<strong>Critères de participation :</strong><br>
+     👍 Aimer la page <strong>${esc(org)}</strong><br>
+     👥 Taguer <strong>3 personnes</strong> en commentaire<br>
+     🔄 Partager le post <strong>en public</strong>`;
+}
+
+/* ============================================================
+   RESUME BANNER
+   ============================================================ */
+function showResumeBanner(savedAt) {
+  const n = S.parts.length;
+  if (!n) return;
+  const el = document.getElementById('resume-banner');
+  const date = new Date(savedAt);
+  const fmt = date.toLocaleDateString('fr-FR',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('rb-text').textContent = `${n} participant${n>1?'s':''} sauvegardé${n>1?'s':''}`;
+  document.getElementById('rb-date').textContent = `Dernière sauvegarde : ${fmt}`;
+  el.style.display = 'flex';
+}
+
+function resumeContest() {
+  dismissBanner();
+  renderList();
+  goStep(2);
+}
+
+function dismissBanner() {
+  document.getElementById('resume-banner').style.display = 'none';
+}
+
+/* ============================================================
+   NEW CONTEST
+   ============================================================ */
+function newContest() {
+  if (S.parts.length > 0) {
+    if (!confirm(`Créer un nouveau concours ?\n\nLes ${S.parts.length} participant(s) actuels seront supprimés.\nLe nom de l'organisateur sera conservé.`)) return;
+  }
+  S.parts = []; S.winners = []; S.excluded = new Set();
+  renderList(); renderList();
+  updateHeaderCount();
+  goStep(1);
+  saveAll();
+  document.getElementById('resume-banner').style.display = 'none';
+}
+
+/* ============================================================
+   NAVIGATION ÉTAPES
+   ============================================================ */
+function goStep(n) {
+  [1,2,3,4].forEach(i => {
+    document.getElementById('sc'+i).classList.toggle('active', i===n);
+    const st = document.getElementById('st'+i);
+    const sn = document.getElementById('sn'+i);
+    st.className = 'step' + (i===n?' active' : i<n?' done':'');
+    sn.textContent = i < n ? '✓' : i;
+  });
+  ['12','23','34'].forEach((id,idx) => {
+    document.getElementById('sd'+id).classList.toggle('done', n > idx+1);
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function selectMode(m) {
+  S.mode = m;
+  document.getElementById('mc-manual').classList.toggle('sel', m==='manual');
+  document.getElementById('mc-api').classList.toggle('sel', m==='api');
+  document.getElementById('api-panel').style.display = m==='api' ? 'block' : 'none';
+}
+
+async function step1Next() {
+  if (S.mode === 'api') {
+    const token = document.getElementById('fb-token').value.trim();
+    const url   = document.getElementById('fb-url').value.trim();
+    if (!token || !url) { alert('Renseignez le token et l\'URL du post.'); return; }
+    S.fbToken = token; S.fbUrl = url;
+    const btn = document.getElementById('btn-s1');
+    btn.innerHTML = '<span class="spin"></span> Chargement...';
+    btn.disabled = true;
+    try { await fetchFBComments(); }
+    catch(e) { btn.innerHTML='Continuer →'; btn.disabled=false; return; }
+    btn.innerHTML = 'Continuer →'; btn.disabled = false;
+  }
+  renderList();
+  goStep(2);
+}
+
+function step2Next() {
+  renderValidation(); renderStats('stats3');
+  goStep(3);
+}
+
+function step3Next() {
+  const el = eligible();
+  if (!el.length) { alert('Aucun participant éligible !'); return; }
+  renderStats('stats4');
+  document.getElementById('elig-count').textContent = el.length - S.excluded.size;
+  ['pre-draw','drawing','result'].forEach(id => {
+    document.getElementById(id).style.display = id==='pre-draw' ? 'block' : 'none';
+  });
+  goStep(4);
+}
+
+/* ============================================================
+   GESTION DES PARTICIPANTS
+   ============================================================ */
+function toggleNew(t) {
+  S.newCrit[t] = !S.newCrit[t];
+  document.getElementById('cb-'+t).classList.toggle('on', S.newCrit[t]);
+}
+
+function addParticipant() {
+  const inp  = document.getElementById('np-name');
+  const name = inp.value.trim();
+  if (!name) { inp.classList.add('err'); inp.focus(); return; }
+
+  S.parts.push({
+    id:      Date.now() + Math.random(),
+    name,
+    like:    S.newCrit.like,
+    tag:     S.newCrit.tag,
+    share:   S.newCrit.share,
+    addedAt: Date.now()
+  });
+
+  inp.value = '';
+  S.newCrit = {like:false,tag:false,share:false};
+  ['like','tag','share'].forEach(t => document.getElementById('cb-'+t).classList.remove('on'));
+  inp.focus();
+
+  renderList();
+  scheduleSave();
+}
+
+function removeParticipant(id) {
+  S.parts = S.parts.filter(p => p.id !== id);
+  renderList();
+  scheduleSave();
+}
+
+function markAllCriteria() {
+  if (!S.parts.length) return;
+  const all = S.parts.every(p => p.like && p.tag && p.share);
+  S.parts.forEach(p => { p.like = p.tag = p.share = !all; });
+  renderList();
+  scheduleSave();
+}
+
+function initials(name) {
+  return name.split(' ').map(w=>w[0]||'').join('').substring(0,2).toUpperCase() || '?';
+}
+
+function updateHeaderCount() {
+  const n = S.parts.length;
+  const el = document.getElementById('h-count');
+  if (n) { el.textContent = `${n} participant${n>1?'s':''}`; el.style.display=''; }
+  else el.style.display = 'none';
+}
+
+function renderList() {
+  const list  = document.getElementById('p-list');
+  const empty = document.getElementById('p-empty');
+  const btn   = document.getElementById('btn-s2');
+  const lc    = document.getElementById('list-count');
+  const n     = S.parts.length;
+
+  updateHeaderCount();
+  btn.disabled = n === 0;
+  lc.textContent = n ? `(${n})` : '';
+
+  if (!n) { list.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display = 'none';
+
+  list.innerHTML = S.parts.map(p => {
+    const ok = p.like && p.tag && p.share;
+    return `
+    <div class="pi${ok?' elig':''}">
+      <div class="pav">${esc(initials(p.name))}</div>
+      <div class="pin">
+        <div class="pname">${esc(p.name)}</div>
+        <div class="pchips">
+          <span class="chip ${p.like?'con':'coff'}">👍 Page</span>
+          <span class="chip ${p.tag?'con':'coff'}">👥 3 tags</span>
+          <span class="chip ${p.share?'con':'coff'}">🔄 Partagé</span>
+          <span class="chip ${ok?'con':'coff'}">${ok?'✅ Éligible':'❌ Incomplet'}</span>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="removeParticipant(${p.id})" title="Supprimer">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   VALIDATION
+   ============================================================ */
+function toggleCrit(id, type) {
+  const p = S.parts.find(x => x.id === id);
+  if (p) { p[type] = !p[type]; renderValidation(); renderStats('stats3'); scheduleSave(); }
+}
+
+function renderValidation() {
+  const c = document.getElementById('val-list');
+  c.innerHTML = S.parts.map(p => {
+    const ok = p.like && p.tag && p.share;
+    return `
+    <div class="pi" style="${ok?'border-color:#AED581;background:#F9FBE7':''}">
+      <div class="pav">${esc(initials(p.name))}</div>
+      <div class="pin">
+        <div class="pname">${esc(p.name)}</div>
+        <div class="pchips" style="margin-top:7px;gap:6px">
+          <button class="tog ${p.like?'on':'off'}" onclick="toggleCrit(${p.id},'like')">👍 Page ${p.like?'✓':'✗'}</button>
+          <button class="tog ${p.tag?'on':'off'}"  onclick="toggleCrit(${p.id},'tag')">👥 3 tags ${p.tag?'✓':'✗'}</button>
+          <button class="tog ${p.share?'on':'off'}" onclick="toggleCrit(${p.id},'share')">🔄 Partagé ${p.share?'✓':'✗'}</button>
+        </div>
+      </div>
+      <div style="font-size:22px;flex-shrink:0">${ok?'✅':'❌'}</div>
+    </div>`;
+  }).join('');
+
+  const el  = eligible().length;
+  const btn = document.getElementById('btn-s3');
+  btn.disabled = !el;
+  btn.textContent = el
+    ? `🎲 Procéder au Tirage (${el} éligible${el>1?'s':''}) →`
+    : '❌ Aucun participant éligible';
+}
+
+function renderStats(id) {
+  const tot = S.parts.length, el = eligible().length;
+  document.getElementById(id).innerHTML = `
+    <div class="stat"><div class="sn">${tot}</div><div class="sl">Total</div></div>
+    <div class="stat"><div class="sn" style="color:var(--green)">${el}</div><div class="sl">Éligibles</div></div>
+    <div class="stat"><div class="sn" style="color:var(--gray)">${tot-el}</div><div class="sl">Incomplets</div></div>`;
+}
+
+function eligible()  { return S.parts.filter(p=>p.like&&p.tag&&p.share); }
+function available() { return eligible().filter(p=>!S.excluded.has(p.id)); }
+
+/* ============================================================
+   TIRAGE AU SORT
+   ============================================================ */
+function startRaffle() {
+  const pool = available();
+  if (!pool.length) { alert('Plus de participants disponibles !'); return; }
+
+  document.getElementById('pre-draw').style.display = 'none';
+  document.getElementById('drawing').style.display  = 'block';
+  document.getElementById('result').style.display   = 'none';
+
+  const winner = pool[Math.floor(Math.random() * pool.length)];
+
+  // Build drum content
+  const drum = document.getElementById('drum');
+  const list = [];
+  for (let i = 0; i < 8; i++) list.push(...pool.sort(()=>Math.random()-.5));
+  list.push(winner);
+  drum.innerHTML = list.map(p=>`<div class="drum-name">${esc(p.name)}</div>`).join('');
+
+  // Scroll animation
+  let pos=0, speed=14, elapsed=0;
+  const DURATION = 3400;
+  const tick = () => {
+    pos -= speed;
+    const max = drum.scrollHeight - 80;
+    if (pos < -max) pos = 0;
+    drum.style.transform = `translateY(${pos}px)`;
+    elapsed += 16;
+    if (elapsed > DURATION * 0.6) speed = Math.max(0.4, speed * 0.976);
+    if (elapsed < DURATION) requestAnimationFrame(tick);
+    else showWinner(winner);
+  };
+  requestAnimationFrame(tick);
+}
+
+function showWinner(w) {
+  S.winners.push({ id: w.id, name: w.name, drawnAt: Date.now() });
+  S.excluded.add(w.id);
+
+  document.getElementById('drawing').style.display = 'none';
+  document.getElementById('result').style.display  = 'block';
+  document.getElementById('winner-name').textContent = w.name;
+
+  renderStats('stats4');
+  scheduleSave();
+
+  if (S.winners.length > 1) {
+    document.getElementById('prev-section').style.display = 'block';
+    document.getElementById('prev-list').innerHTML = S.winners.slice(0,-1)
+      .map(x=>`<div class="pw-chip">🏆 ${esc(x.name)}</div>`).join('');
+  }
+  launchConfetti();
+}
+
+function drawAgain() {
+  const pool = available();
+  if (!pool.length) { alert('Tous les participants éligibles ont déjà gagné !'); return; }
+  document.getElementById('pre-draw').style.display = 'block';
+  document.getElementById('result').style.display   = 'none';
+  document.getElementById('elig-count').textContent = pool.length;
+  renderStats('stats4');
+}
+
+function fullReset() {
+  if (!confirm('Réinitialiser la liste des gagnants ?\n(Les participants sont conservés)')) return;
+  S.winners = []; S.excluded = new Set();
+  document.getElementById('prev-section').style.display = 'none';
+  document.getElementById('pre-draw').style.display = 'block';
+  document.getElementById('result').style.display   = 'none';
+  document.getElementById('elig-count').textContent = available().length;
+  renderStats('stats4');
+  scheduleSave();
+}
+
+/* ============================================================
+   CONFETTI
+   ============================================================ */
+function launchConfetti() {
+  const c = document.getElementById('confetti');
+  c.innerHTML = '';
+  const colors = ['#FFD700','#1877F2','#42B72A','#FA3E3E','#FF6B35','#A855F7','#EC4899','#06B6D4'];
+  for (let i = 0; i < 130; i++) {
+    const p = document.createElement('div');
+    p.className = 'cf';
+    const size = 6 + Math.random() * 10;
+    p.style.cssText = `left:${Math.random()*100}%;width:${size}px;height:${size}px;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};animation-duration:${1.5+Math.random()*2.5}s;animation-delay:${Math.random()*.6}s`;
+    c.appendChild(p);
+  }
+  setTimeout(() => c.innerHTML = '', 5000);
+}
+
+/* ============================================================
+   API FACEBOOK
+   ============================================================ */
+async function fetchFBComments() {
+  const id = parsePostId(S.fbUrl);
+  if (!id) {
+    alert('URL du post invalide.\n\nExemple valide :\nhttps://www.facebook.com/VotrePage/posts/123456789');
+    throw new Error('invalid url');
+  }
+  await loadPage(`https://graph.facebook.com/v19.0/${id}/comments?fields=from,message_tags&limit=100&access_token=${S.fbToken}`);
+  // Update subtitle after import
+  document.getElementById('sc2-sub').innerHTML =
+    `<strong>${S.parts.length} commentaires importés</strong> — Tags vérifiés automatiquement.
+     Cochez manuellement <em>Like de page</em> et <em>Partage public</em>.`;
+}
+
+async function loadPage(url) {
+  const r = await fetch(url);
+  const d = await r.json();
+  if (d.error) { alert('Erreur API Facebook :\n'+d.error.message); throw new Error(d.error.message); }
+  (d.data || []).forEach(c => {
+    if (!c.from) return;
+    const tags = (c.message_tags || []).length;
+    const ex   = S.parts.find(p => p.fbId === c.from.id);
+    if (ex) { if (tags >= 3) ex.tag = true; }
+    else S.parts.push({ id: Date.now()+Math.random(), fbId: c.from.id, name: c.from.name, like: false, tag: tags>=3, share: false, addedAt: Date.now() });
+  });
+  if (d.paging?.next) await loadPage(d.paging.next);
+}
+
+function parsePostId(url) {
+  try {
+    const u = new URL(url), pts = u.pathname.split('/').filter(Boolean);
+    if (pts.includes('posts')) return `${pts[0]}_${pts[pts.indexOf('posts')+1]}`;
+    const fbid = u.searchParams.get('story_fbid'), pid = u.searchParams.get('id');
+    if (fbid && pid) return `${pid}_${fbid}`;
+    const ph = u.searchParams.get('fbid');
+    if (ph) return ph;
+  } catch{}
+  return null;
+}
+
+/* ============================================================
+   CSV IMPORT / EXPORT
+   ============================================================ */
+function importCSV(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const lines = ev.target.result.split(/\r?\n/);
+    let added = 0;
+    lines.forEach((line, i) => {
+      if (!line.trim()) return;
+      if (i===0 && /nom|name|prenom/i.test(line)) return; // skip header
+      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g,''));
+      const name = cols[0]; if (!name) return;
+      const bool = v => v==='1'||/^(oui|yes|true|x)$/i.test(v||'');
+      S.parts.push({ id: Date.now()+Math.random(), name, like: bool(cols[1]), tag: bool(cols[2]), share: bool(cols[3]), addedAt: Date.now() });
+      added++;
+    });
+    e.target.value = '';
+    renderList(); scheduleSave();
+    alert(`✅ ${added} participant(s) importé(s).`);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function exportCSV() {
+  if (!S.parts.length) { alert('Aucun participant à exporter.'); return; }
+  const rows = [['Nom','A aimé la page','A tagué 3 personnes','A partagé publiquement','Éligible']];
+  S.parts.forEach(p => rows.push([
+    `"${p.name.replace(/"/g,'""')}"`,
+    p.like?'Oui':'Non', p.tag?'Oui':'Non', p.share?'Oui':'Non',
+    (p.like&&p.tag&&p.share)?'Oui':'Non'
+  ]));
+  const csv  = rows.map(r=>r.join(',')).join('\n');
+  const a    = document.createElement('a');
+  const name = (S.config.organizer||'concours').replace(/[^a-z0-9]/gi,'-').toLowerCase();
+  a.href     = 'data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
+  a.download = `${name}-participants.csv`;
+  a.click();
+}
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function esc(t) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(t));
+  return d.innerHTML;
+}
+
+/* ============================================================
+   INITIALISATION
+   ============================================================ */
+(function init() {
+  const saved = loadAll();
+
+  if (!S.config.organizer) {
+    // First launch: show setup
+    openSetup();
+  } else {
+    // Config exists: apply it
+    applyConfig();
+    if (saved && saved.savedAt && S.parts.length > 0) {
+      showResumeBanner(saved.savedAt);
+    }
+    renderList();
+  }
+})();
+</script>
+</body>
+</html>
